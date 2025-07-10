@@ -10,6 +10,10 @@ from mcp.server.fastmcp import FastMCP
 from .config import initialize_config
 
 
+#RUN WITH THIS COMMAND
+#export SEC_EDGAR_USER_AGENT="YourCompanyName YourName@example.com" && uv run python -m sec_edgar_mcp.server --transport streamable-http
+
+
 sec_edgar_user_agent = initialize_config()
 
 # Initialize MCP
