@@ -7,14 +7,13 @@ from secedgar.core.rest import (
     get_xbrl_frames,
 )
 from mcp.server.fastmcp import FastMCP
-from config import initialize_config
+from .config import initialize_config
 
 
 sec_edgar_user_agent = initialize_config()
 
 # Initialize MCP
-mcp = FastMCP("SEC EDGAR MCP", dependencies=["secedgar"])
-
+mcp = FastMCP("SEC EDGAR MCP", dependencies=["secedgar"], stateless_http=True, host="0.0.0.0")
 
 @mcp.tool("get_submissions")
 def get_submissions_tool(
