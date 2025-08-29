@@ -1,6 +1,6 @@
 import logging
 from typing import Dict, Union, List, Optional, Any
-from datetime import datetime
+from datetime import datetime, timedelta, date
 from edgar import get_filings
 from ..core.client import EdgarClient
 from ..core.models import FilingInfo
@@ -31,24 +31,34 @@ class FilingsTools:
                 days,
                 limit,
             )
-            if identifier:
+            # Treat wildcard/empty identifiers as a global search
+            wildcard_identifiers = {"*", "", None, "all", "ALL"}
+            if identifier not in wildcard_identifiers:
                 # Company-specific filings
                 company = self.client.get_company(identifier)
                 filings = company.get_filings(form=form_type)
             else:
                 # Global filings using edgar-tools get_filings()
-                filings = get_filings(form=form_type, count=limit)
+                filings = get_filings(form=form_type)
 
-            # Limit results
+            # Optional date cutoff (last `days`)
+            cutoff = None
+            try:
+                if isinstance(days, int) and days > 0:
+                    cutoff = datetime.utcnow() - timedelta(days=days)
+            except Exception:
+                cutoff = None
+
+            # Collect up to `limit` results, honoring cutoff if provided
             filings_list = []
-            for i, filing in enumerate(filings):
-                if i >= limit:
-                    break
+            for filing in filings:
 
                 # Convert date fields to datetime objects if they're strings
                 filing_date = filing.filing_date
                 if isinstance(filing_date, str):
                     filing_date = datetime.fromisoformat(filing_date.replace("Z", "+00:00"))
+                elif isinstance(filing_date, date) and not isinstance(filing_date, datetime):
+                    filing_date = datetime(filing_date.year, filing_date.month, filing_date.day)
 
                 acceptance_datetime = getattr(filing, "acceptance_datetime", None)
                 if isinstance(acceptance_datetime, str):
@@ -57,6 +67,10 @@ class FilingsTools:
                 period_of_report = getattr(filing, "period_of_report", None)
                 if isinstance(period_of_report, str):
                     period_of_report = datetime.fromisoformat(period_of_report.replace("Z", "+00:00"))
+
+                # If we have a cutoff, skip filings older than cutoff
+                if cutoff and isinstance(filing_date, datetime) and filing_date < cutoff:
+                    continue
 
                 filing_info = FilingInfo(
                     accession_number=filing.accession_number,
@@ -69,6 +83,9 @@ class FilingsTools:
                     period_of_report=period_of_report,
                 )
                 filings_list.append(filing_info.to_dict())
+
+                if len(filings_list) >= (limit or 50):
+                    break
 
             out = {"success": True, "filings": filings_list, "count": len(filings_list)}
             self._log.debug(
