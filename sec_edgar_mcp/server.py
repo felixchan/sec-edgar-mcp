@@ -1,5 +1,6 @@
 import argparse
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
+
 from sec_edgar_mcp.tools import CompanyTools, FilingsTools, FinancialTools, InsiderTools
 
 
@@ -110,7 +111,9 @@ def get_company_facts(identifier: str):
 
 # Filing Tools
 @mcp.tool("get_recent_filings")
-def get_recent_filings(identifier: str = None, form_type: str = None, days: int = 30, limit: int = 50):
+def get_recent_filings(
+    identifier: str = None, form_type: str = None, days: int = 30, limit: int = 50
+):
     """
     Get recent SEC filings for a company or across all companies.
 
@@ -265,7 +268,12 @@ def discover_company_metrics(identifier: str, search_term: str = None):
 
 
 @mcp.tool("get_xbrl_concepts")
-def get_xbrl_concepts(identifier: str, accession_number: str = None, concepts: list = None, form_type: str = "10-K"):
+def get_xbrl_concepts(
+    identifier: str,
+    accession_number: str = None,
+    concepts: list = None,
+    form_type: str = "10-K",
+):
     """
     ADVANCED TOOL: Extract specific XBRL concepts from a filing.
 
@@ -291,12 +299,17 @@ def get_xbrl_concepts(identifier: str, accession_number: str = None, concepts: l
     Returns:
         Dictionary containing extracted XBRL concepts with filing_reference and source URLs.
     """
-    return financial_tools.get_xbrl_concepts(identifier, accession_number, concepts, form_type)
+    return financial_tools.get_xbrl_concepts(
+        identifier, accession_number, concepts, form_type
+    )
 
 
 @mcp.tool("discover_xbrl_concepts")
 def discover_xbrl_concepts(
-    identifier: str, accession_number: str = None, form_type: str = "10-K", namespace_filter: str = None
+    identifier: str,
+    accession_number: str = None,
+    form_type: str = "10-K",
+    namespace_filter: str = None,
 ):
     """
     Discover all available XBRL concepts in a filing, including company-specific ones.
@@ -310,12 +323,16 @@ def discover_xbrl_concepts(
     Returns:
         Dictionary containing all discovered XBRL concepts, namespaces, and company-specific tags
     """
-    return financial_tools.discover_xbrl_concepts(identifier, accession_number, form_type, namespace_filter)
+    return financial_tools.discover_xbrl_concepts(
+        identifier, accession_number, form_type, namespace_filter
+    )
 
 
 # Insider Trading Tools
 @mcp.tool("get_insider_transactions")
-def get_insider_transactions(identifier: str, form_types: list = None, days: int = 90, limit: int = 50):
+def get_insider_transactions(
+    identifier: str, form_types: list = None, days: int = 90, limit: int = 50
+):
     """
     Get insider trading transactions for a company from SEC filings.
 
@@ -435,7 +452,12 @@ def get_recommended_tools(form_type: str):
     """
     recommendations = {
         "10-K": {
-            "tools": ["get_financials", "get_filing_sections", "get_segment_data", "get_key_metrics"],
+            "tools": [
+                "get_financials",
+                "get_filing_sections",
+                "get_segment_data",
+                "get_key_metrics",
+            ],
             "description": "Annual report with comprehensive business and financial information",
             "tips": [
                 "Use get_financials to extract financial statements",
@@ -476,13 +498,20 @@ def get_recommended_tools(form_type: str):
         "DEF 14A": {
             "tools": ["get_filing_content", "get_filing_sections"],
             "description": "Proxy statement with executive compensation and governance",
-            "tips": ["Look for executive compensation tables", "Review shareholder proposals and board information"],
+            "tips": [
+                "Look for executive compensation tables",
+                "Review shareholder proposals and board information",
+            ],
         },
     }
 
     form_type_upper = form_type.upper()
     if form_type_upper in recommendations:
-        return {"success": True, "form_type": form_type_upper, "recommendations": recommendations[form_type_upper]}
+        return {
+            "success": True,
+            "form_type": form_type_upper,
+            "recommendations": recommendations[form_type_upper],
+        }
     else:
         return {
             "success": True,
@@ -493,13 +522,16 @@ def get_recommended_tools(form_type: str):
 
 
 def main():
-    """Main entry point for the MCP server."""
-    parser = argparse.ArgumentParser(description="SEC EDGAR MCP Server - Access SEC filings and financial data")
-    parser.add_argument("--transport", default="stdio", help="Transport method")
+    parser = argparse.ArgumentParser(
+        description="SEC EDGAR MCP Server - Access SEC filings and financial data"
+    )
+    parser.add_argument("--transport", default="streamable-http")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--path", default="/mcp/edgar")
     args = parser.parse_args()
 
-    # Run the MCP server
-    mcp.run(transport=args.transport)
+    mcp.run(transport=args.transport, host=args.host, port=args.port, path=args.path)
 
 
 if __name__ == "__main__":
