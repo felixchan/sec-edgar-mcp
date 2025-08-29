@@ -11,47 +11,15 @@ from sec_edgar_mcp.tools import CompanyTools, FilingsTools, FinancialTools, Insi
 mcp = FastMCP("SEC EDGAR MCP", dependencies=["edgartools", "beautifulsoup4"])
 
 
-# Simple per-tool call logger
 _LOG = logging.getLogger("sec_edgar_mcp.server")
 
 
-def _log_tool_call(tool_name: str):
-    def _decorator(fn):
-        def _wrapped(*args, **kwargs):
-            lvl = logging.getLevelName(os.getenv("LOG_LEVEL", "INFO").upper())
-            if _LOG.level != lvl:
-                # Keep dynamic for local tweaking without restart in some setups
-                _LOG.setLevel(lvl)
-            start = time.time()
-            # Avoid dumping huge payloads; show shallow arg preview
-            def _preview(v):
-                try:
-                    s = str(v)
-                except Exception:
-                    return "<unrepr>"
-                return s if len(s) <= 200 else s[:197] + "..."
-
-            _LOG.info("tool_call start name=%s args=%s kwargs=%s", tool_name, _preview(args), _preview(kwargs))
-            try:
-                out = fn(*args, **kwargs)
-                dur_ms = int((time.time() - start) * 1000)
-                # Try to expose a compact status
-                status = None
-                if isinstance(out, dict):
-                    status = out.get("success")
-                _LOG.info("tool_call end   name=%s ok=%s dur_ms=%s", tool_name, status, dur_ms)
-                return out
-            except Exception as e:
-                dur_ms = int((time.time() - start) * 1000)
-                _LOG.exception("tool_call error name=%s dur_ms=%s error=%s", tool_name, dur_ms, e)
-                raise
-
-        # Preserve metadata
-        _wrapped.__name__ = getattr(fn, "__name__", f"wrapped_{tool_name}")
-        _wrapped.__doc__ = getattr(fn, "__doc__", None)
-        return _wrapped
-
-    return _decorator
+def _preview(v):
+    try:
+        s = str(v)
+    except Exception:
+        return "<unrepr>"
+    return s if len(s) <= 200 else s[:197] + "..."
 
 # Add system-wide instructions for deterministic responses
 DETERMINISTIC_INSTRUCTIONS = """
@@ -158,7 +126,6 @@ def get_company_facts(identifier: str):
 
 # Filing Tools
 @mcp.tool("get_recent_filings")
-@_log_tool_call("get_recent_filings")
 def get_recent_filings(
     identifier: str = None, form_type: str = None, days: int = 30, limit: int = 50
 ):
@@ -174,11 +141,31 @@ def get_recent_filings(
     Returns:
         Dictionary containing list of recent filings
     """
-    return filings_tools.get_recent_filings(identifier, form_type, days, limit)
+    start = time.time()
+    _LOG.info(
+        "tool_call start name=get_recent_filings identifier=%s form_type=%s days=%s limit=%s",
+        identifier,
+        form_type,
+        days,
+        limit,
+    )
+    try:
+        out = filings_tools.get_recent_filings(identifier, form_type, days, limit)
+        _LOG.info(
+            "tool_call end   name=get_recent_filings ok=%s dur_ms=%s",
+            out.get("success") if isinstance(out, dict) else None,
+            int((time.time() - start) * 1000),
+        )
+        return out
+    except Exception:
+        _LOG.exception(
+            "tool_call error name=get_recent_filings dur_ms=%s",
+            int((time.time() - start) * 1000),
+        )
+        raise
 
 
 @mcp.tool("get_filing_content")
-@_log_tool_call("get_filing_content")
 def get_filing_content(identifier: str, accession_number: str):
     """
     Get the content of a specific SEC filing.
@@ -190,7 +177,26 @@ def get_filing_content(identifier: str, accession_number: str):
     Returns:
         Dictionary containing filing content and metadata
     """
-    return filings_tools.get_filing_content(identifier, accession_number)
+    start = time.time()
+    _LOG.info(
+        "tool_call start name=get_filing_content identifier=%s accession=%s",
+        _preview(identifier),
+        _preview(accession_number),
+    )
+    try:
+        out = filings_tools.get_filing_content(identifier, accession_number)
+        _LOG.info(
+            "tool_call end   name=get_filing_content ok=%s dur_ms=%s",
+            out.get("success") if isinstance(out, dict) else None,
+            int((time.time() - start) * 1000),
+        )
+        return out
+    except Exception:
+        _LOG.exception(
+            "tool_call error name=get_filing_content dur_ms=%s",
+            int((time.time() - start) * 1000),
+        )
+        raise
 
 
 @mcp.tool("analyze_8k")
@@ -225,7 +231,6 @@ def get_filing_sections(identifier: str, accession_number: str, form_type: str):
 
 
 @mcp.tool("analyze_proxy_def14a")
-@_log_tool_call("analyze_proxy_def14a")
 def analyze_proxy_def14a(identifier: str, accession_number: str = None):
     """
     Analyze a company's proxy (DEF 14A/DEFM14A/PRE 14A/PREM14A) and return raw text spans
@@ -255,7 +260,26 @@ def analyze_proxy_def14a(identifier: str, accession_number: str = None):
           - full_text_len
           - disclaimer
     """
-    return proxy_tools.analyze_proxy_def14a(identifier=identifier, accession_number=accession_number)
+    start = time.time()
+    _LOG.info(
+        "tool_call start name=analyze_proxy_def14a identifier=%s accession=%s",
+        _preview(identifier),
+        _preview(accession_number),
+    )
+    try:
+        out = proxy_tools.analyze_proxy_def14a(identifier=identifier, accession_number=accession_number)
+        _LOG.info(
+            "tool_call end   name=analyze_proxy_def14a ok=%s dur_ms=%s",
+            out.get("success") if isinstance(out, dict) else None,
+            int((time.time() - start) * 1000),
+        )
+        return out
+    except Exception:
+        _LOG.exception(
+            "tool_call error name=analyze_proxy_def14a dur_ms=%s",
+            int((time.time() - start) * 1000),
+        )
+        raise
 
 
 # Financial Tools
