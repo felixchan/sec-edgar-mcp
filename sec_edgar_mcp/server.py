@@ -1,11 +1,11 @@
 import argparse
 from fastmcp import FastMCP
 
-from sec_edgar_mcp.tools import CompanyTools, FilingsTools, FinancialTools, InsiderTools
+from sec_edgar_mcp.tools import CompanyTools, FilingsTools, FinancialTools, InsiderTools, ProxyTools
 
 
 # Initialize MCP server
-mcp = FastMCP("SEC EDGAR MCP", dependencies=["edgartools"])
+mcp = FastMCP("SEC EDGAR MCP", dependencies=["edgartools", "beautifulsoup4"])
 
 # Add system-wide instructions for deterministic responses
 DETERMINISTIC_INSTRUCTIONS = """
@@ -43,6 +43,7 @@ company_tools = CompanyTools()
 filings_tools = FilingsTools()
 financial_tools = FinancialTools()
 insider_tools = InsiderTools()
+proxy_tools = ProxyTools(filings_tools)
 
 
 # Company Tools
@@ -173,6 +174,39 @@ def get_filing_sections(identifier: str, accession_number: str, form_type: str):
         Dictionary containing available sections from the filing
     """
     return filings_tools.get_filing_sections(identifier, accession_number, form_type)
+
+
+@mcp.tool("analyze_proxy_def14a")
+def analyze_proxy_def14a(identifier: str, accession_number: str = None):
+    """
+    Analyze a company's proxy (DEF 14A/DEFM14A/PRE 14A/PREM14A) and return raw text spans
+    for key derivative-screening sections (S-K 404 related-party, independence, committees,
+    beneficial ownership, forum clause, governance overview), plus deterministic filing metadata.
+
+    LLM usage contract:
+    1) Use ONLY the sections.*.text returned by this tool and the filing URL. No external sources.
+    2) Produce structured JSON with page/heading anchors by quoting the nearest heading text and including a 12–20 word excerpt around each fact for verification.
+    3) For each extracted fact (related-party, independence, committee role, beneficial ownership ≥5%, forum clause, governance flag), include:
+       - "fact": the normalized value
+       - "source_heading": the heading from headings_index that precedes the fact
+       - "evidence_excerpt": short verbatim snippet from sections text
+       - "sec_url": the filing URL returned by the tool
+    4) If a section is absent, set its field to null and add "gap_note".
+    5) Be fully deterministic. Identical input yields identical output.
+
+    Args:
+        identifier: Ticker or CIK
+        accession_number: Optional specific proxy accession to analyze. If omitted, uses the most recent proxy within last 400 days.
+
+    Returns:
+        Dict containing:
+          - filing: {form, accession, date, url, identifier}
+          - sections: {related_party, director_independence, board_committees, beneficial_ownership, exclusive_forum, governance_overview}
+          - headings_index: [{pos, title}]
+          - full_text_len
+          - disclaimer
+    """
+    return proxy_tools.analyze_proxy_def14a(identifier=identifier, accession_number=accession_number)
 
 
 # Financial Tools
@@ -496,7 +530,7 @@ def get_recommended_tools(form_type: str):
             ],
         },
         "DEF 14A": {
-            "tools": ["get_filing_content", "get_filing_sections"],
+            "tools": ["analyze_proxy_def14a", "get_filing_content", "get_filing_sections"],
             "description": "Proxy statement with executive compensation and governance",
             "tips": [
                 "Look for executive compensation tables",

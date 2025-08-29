@@ -1650,6 +1650,7 @@ name = "sec-edgar-mcp"
 version = "1.0.4"
 source = { editable = "." }
 dependencies = [
+    { name = "beautifulsoup4" },
     { name = "edgartools" },
     { name = "fastmcp" },
     { name = "mcp", extra = ["cli"] },
@@ -1664,6 +1665,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "beautifulsoup4", specifier = ">=4.12.0" },
     { name = "edgartools", specifier = ">=4.4.0" },
     { name = "fastmcp", specifier = ">=2.11.3" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.12.4" },

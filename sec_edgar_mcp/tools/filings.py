@@ -65,7 +65,7 @@ class FilingsTools:
         except Exception as e:
             return {"success": False, "error": f"Failed to get recent filings: {str(e)}"}
 
-    def get_filing_content(self, identifier: str, accession_number: str) -> ToolResponse:
+    def get_filing_content(self, identifier: str, accession_number: str, max_chars: Optional[int] = 50000) -> ToolResponse:
         """Get the content of a specific filing."""
         try:
             company = self.client.get_company(identifier)
@@ -99,13 +99,21 @@ class FilingsTools:
             except Exception:
                 pass
 
+            # Optionally truncate very large filings to keep responses reasonable
+            if isinstance(max_chars, int) and max_chars > 0:
+                content_out = content[:max_chars] if len(content) > max_chars else content
+                content_truncated = len(content) > max_chars
+            else:
+                content_out = content
+                content_truncated = False
+
             return {
                 "success": True,
                 "accession_number": filing.accession_number,
                 "form_type": filing.form,
                 "filing_date": filing.filing_date.isoformat(),
-                "content": content[:50000] if len(content) > 50000 else content,  # Limit size
-                "content_truncated": len(content) > 50000,
+                "content": content_out,
+                "content_truncated": content_truncated,
                 "filing_data": filing_data,
                 "url": filing.url,
             }

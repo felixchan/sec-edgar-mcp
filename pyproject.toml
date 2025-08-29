@@ -20,6 +20,7 @@ dependencies = [
   "fastmcp>=2.11.3",
   "edgartools>=4.4.0",
   "requests>=2.31.0",
+  "beautifulsoup4>=4.12.0",
 ]
 
 [tool.setuptools.packages.find]
