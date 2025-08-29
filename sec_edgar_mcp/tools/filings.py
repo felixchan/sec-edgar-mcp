@@ -60,13 +60,9 @@ class FilingsTools:
                 elif isinstance(filing_date, date) and not isinstance(filing_date, datetime):
                     filing_date = datetime(filing_date.year, filing_date.month, filing_date.day)
 
-                acceptance_datetime = getattr(filing, "acceptance_datetime", None)
-                if isinstance(acceptance_datetime, str):
-                    acceptance_datetime = datetime.fromisoformat(acceptance_datetime.replace("Z", "+00:00"))
-
-                period_of_report = getattr(filing, "period_of_report", None)
-                if isinstance(period_of_report, str):
-                    period_of_report = datetime.fromisoformat(period_of_report.replace("Z", "+00:00"))
+                # Avoid accessing properties that may trigger network fetches
+                acceptance_datetime = None
+                period_of_report = None
 
                 # If we have a cutoff, skip filings older than cutoff
                 if cutoff and isinstance(filing_date, datetime) and filing_date < cutoff:
@@ -78,7 +74,7 @@ class FilingsTools:
                     form_type=filing.form,
                     company_name=filing.company,
                     cik=filing.cik,
-                    file_number=getattr(filing, "file_number", None),
+                    file_number=None,
                     acceptance_datetime=acceptance_datetime,
                     period_of_report=period_of_report,
                 )
