@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, Union, List, Optional, Any
 from datetime import datetime
 from edgar import get_filings
@@ -12,6 +13,7 @@ class FilingsTools:
 
     def __init__(self):
         self.client = EdgarClient()
+        self._log = logging.getLogger("sec_edgar_mcp.tools.filings")
 
     def get_recent_filings(
         self,
@@ -22,6 +24,13 @@ class FilingsTools:
     ) -> ToolResponse:
         """Get recent filings for a company or across all companies."""
         try:
+            self._log.debug(
+                "get_recent_filings identifier=%s form_type=%s days=%s limit=%s",
+                identifier,
+                form_type,
+                days,
+                limit,
+            )
             if identifier:
                 # Company-specific filings
                 company = self.client.get_company(identifier)
@@ -61,13 +70,26 @@ class FilingsTools:
                 )
                 filings_list.append(filing_info.to_dict())
 
-            return {"success": True, "filings": filings_list, "count": len(filings_list)}
+            out = {"success": True, "filings": filings_list, "count": len(filings_list)}
+            self._log.debug(
+                "get_recent_filings ok count=%s first_form=%s",
+                len(filings_list),
+                filings_list[0]["form_type"] if filings_list else None,
+            )
+            return out
         except Exception as e:
+            self._log.exception("get_recent_filings error: %s", e)
             return {"success": False, "error": f"Failed to get recent filings: {str(e)}"}
 
     def get_filing_content(self, identifier: str, accession_number: str, max_chars: Optional[int] = 50000) -> ToolResponse:
         """Get the content of a specific filing."""
         try:
+            self._log.debug(
+                "get_filing_content identifier=%s accession=%s max_chars=%s",
+                identifier,
+                accession_number,
+                max_chars,
+            )
             company = self.client.get_company(identifier)
 
             # Find the specific filing
@@ -107,7 +129,7 @@ class FilingsTools:
                 content_out = content
                 content_truncated = False
 
-            return {
+            out = {
                 "success": True,
                 "accession_number": filing.accession_number,
                 "form_type": filing.form,
@@ -117,9 +139,17 @@ class FilingsTools:
                 "filing_data": filing_data,
                 "url": filing.url,
             }
+            self._log.debug(
+                "get_filing_content ok form=%s truncated=%s url=%s",
+                filing.form,
+                content_truncated,
+                filing.url,
+            )
+            return out
         except FilingNotFoundError as e:
             return {"success": False, "error": str(e)}
         except Exception as e:
+            self._log.exception("get_filing_content error: %s", e)
             return {"success": False, "error": f"Failed to get filing content: {str(e)}"}
 
     def analyze_8k(self, identifier: str, accession_number: str) -> ToolResponse:
